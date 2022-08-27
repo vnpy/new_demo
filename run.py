@@ -41,7 +41,6 @@ class CtpMdApi(MdApi):
         self.widget = widget
 
     def onFrontConnected(self):
-        self.monitor.append("服务器连接成功")
         self.widget.signal.emit("服务器连接成功")
 
         ctp_req = {
