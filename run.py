@@ -1,9 +1,11 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 
 from vnpy_tts.api import MdApi
 
 
 class SimpleWidget(QtWidgets.QWidget):
+
+    signal = QtCore.Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -17,6 +19,7 @@ class SimpleWidget(QtWidgets.QWidget):
         self.symbol_line = QtWidgets.QLineEdit()
 
         self.subscribe_button.clicked.connect(self.subscribe_symbol)
+        self.signal.connect(self.log_monitor.append)
 
         vbox = QtWidgets.QVBoxLayout()
         vbox.addWidget(self.log_monitor)
@@ -32,13 +35,14 @@ class SimpleWidget(QtWidgets.QWidget):
 
 class CtpMdApi(MdApi):
 
-    def __init__(self, monitor) -> None:
+    def __init__(self, widget) -> None:
         super().__init__()
 
-        self.monitor = monitor
+        self.widget = widget
 
     def onFrontConnected(self):
         self.monitor.append("服务器连接成功")
+        self.widget.signal.emit("服务器连接成功")
 
         ctp_req = {
             "UserID": "000300",
@@ -48,16 +52,16 @@ class CtpMdApi(MdApi):
         self.reqUserLogin(ctp_req, 1)
 
     def onFrontDisconnected(self, reason):
-        self.monitor.append("服务器连接断开", reason)
+        self.widget.signal.emit("服务器连接断开", reason)
 
     def onRspUserLogin(self, data, error, reqid, last):
         if not error["ErrorID"]:
-            self.monitor.append("行情服务器登录成功")
+            self.widget.signal.emit("行情服务器登录成功")
         else:
-            self.monitor.append("行情服务器登录失败", error)
+            self.widget.signal.emit("行情服务器登录失败", error)
 
     def onRtnDepthMarketData(self, data):
-        self.monitor.append(str(data))
+        self.widget.signal.emit(str(data))
 
 
 def main():
@@ -66,7 +70,7 @@ def main():
     widget = SimpleWidget()
     widget.show()
 
-    api = CtpMdApi(widget.log_monitor)
+    api = CtpMdApi(widget)
     widget.api = api
 
     api.createFtdcMdApi(".")
